@@ -40,7 +40,7 @@ Also sign up (free):
 
 ### Step 2 — Create your GitHub Pages repo
 
-1. Go to github.com and create a new repo named: `unomedina93.github.io`
+1. Go to github.com and create a new repo named: `unomedina93.github.io/deal-finder`
 2. In repo Settings → Pages → Source: set to **GitHub Actions**
 3. Push this entire project to that repo
 
@@ -74,7 +74,7 @@ actual Amazon Associates tag (e.g., `"mysite-20"`).
 ### Step 5 — Update blog/_config.yml
 
 ```yaml
-url: "https://unomedina93.github.io"
+url: "https://unomedina93.github.io/deal-finder"
 ```
 
 ---
@@ -103,7 +103,7 @@ cd ~/Desktop/affiliate-bot
 git init
 git add .
 git commit -m "Initial affiliate bot setup"
-git remote add origin https://github.com/unomedina93/unomedina93.github.io.git
+git remote add origin https://github.com/unomedina93/unomedina93.github.io/deal-finder.git
 git push -u origin main
 ```
 
