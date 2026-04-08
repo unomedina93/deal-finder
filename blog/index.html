@@ -1,0 +1,24 @@
+---
+layout: default
+title: Home
+---
+
+<section class="hero">
+  <h1>Home Finds & Deals</h1>
+  <p>Honest reviews and the best prices on home decor, furniture, and tools.</p>
+</section>
+
+<ul class="post-list">
+  {% for post in site.posts limit:20 %}
+  <li class="post-list-item">
+    {% if post.image %}
+    <img src="{{ post.image }}" alt="{{ post.title }}">
+    {% endif %}
+    <div>
+      <h2><a href="{{ post.url | relative_url }}">{{ post.title }}</a></h2>
+      <p>{{ post.description | default: post.excerpt | strip_html | truncate: 120 }}</p>
+      <small>{{ post.date | date: "%B %d, %Y" }} &middot; {{ post.categories | first | capitalize }}</small>
+    </div>
+  </li>
+  {% endfor %}
+</ul>

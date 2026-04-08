@@ -1,0 +1,49 @@
+---
+layout: default
+---
+
+<article class="post">
+  <header class="post-header">
+    {% if page.image %}
+    <img src="{{ page.image }}" alt="{{ page.title }}" class="post-hero-image">
+    {% endif %}
+    <h1>{{ page.title }}</h1>
+    <div class="post-meta">
+      <time datetime="{{ page.date | date_to_xmlschema }}">
+        {{ page.date | date: "%B %d, %Y" }}
+      </time>
+      <span class="category">{{ page.categories | first | capitalize }}</span>
+    </div>
+  </header>
+
+  <div class="post-content">
+    {{ content }}
+  </div>
+
+  <footer class="post-footer">
+    <div class="disclosure">
+      <strong>Disclosure:</strong> This post contains affiliate links.
+      I may earn a commission at no extra cost to you.
+    </div>
+
+    <div class="tags">
+      {% for tag in page.tags %}
+        <span class="tag">{{ tag }}</span>
+      {% endfor %}
+    </div>
+  </footer>
+</article>
+
+<!-- Related posts -->
+<section class="related-posts">
+  <h3>More Picks You Might Like</h3>
+  <div class="post-grid">
+    {% assign related = site.posts | where_exp: "p", "p.url != page.url" | slice: 0, 3 %}
+    {% for post in related %}
+    <a href="{{ post.url | relative_url }}" class="post-card">
+      {% if post.image %}<img src="{{ post.image }}" alt="{{ post.title }}">{% endif %}
+      <h4>{{ post.title }}</h4>
+    </a>
+    {% endfor %}
+  </div>
+</section>

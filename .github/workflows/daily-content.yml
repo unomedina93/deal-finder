@@ -1,0 +1,51 @@
+name: Daily Affiliate Content
+
+on:
+  schedule:
+    # Runs every day at 9:00 AM EST (14:00 UTC)
+    - cron: "0 14 * * *"
+
+  # Also allows manual trigger from GitHub Actions tab
+  workflow_dispatch:
+
+jobs:
+  generate-and-publish:
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: write   # Needed to commit blog posts to the repo
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Run affiliate bot
+        env:
+          ANTHROPIC_API_KEY:        ${{ secrets.ANTHROPIC_API_KEY }}
+          AMAZON_ASSOCIATE_TAG:     ${{ secrets.AMAZON_ASSOCIATE_TAG }}
+          HOME_DEPOT_AFFILIATE_TAG: ${{ secrets.HOME_DEPOT_AFFILIATE_TAG }}
+          WAYFAIR_AFFILIATE_TAG:    ${{ secrets.WAYFAIR_AFFILIATE_TAG }}
+          BUFFER_ACCESS_TOKEN:      ${{ secrets.BUFFER_ACCESS_TOKEN }}
+          BEEHIIV_API_KEY:          ${{ secrets.BEEHIIV_API_KEY }}
+          BEEHIIV_PUBLICATION_ID:   ${{ secrets.BEEHIIV_PUBLICATION_ID }}
+          GITHUB_TOKEN:             ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_REPO:              ${{ github.repository }}
+          GITHUB_BRANCH:            main
+        working-directory: ./bot
+        run: python main.py
+
+      - name: Commit generated blog posts
+        run: |
+          git config --global user.name  "Affiliate Bot"
+          git config --global user.email "bot@affiliate.local"
+          git add blog/_posts/ logs/
+          git diff --staged --quiet || git commit -m "Daily post: $(date +'%Y-%m-%d')"
+          git push

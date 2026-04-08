@@ -1,0 +1,32 @@
+title: "Home Finds & Deals"
+description: "Honest reviews and the best prices on home decor, furniture, and tools."
+baseurl: ""
+url: "https://unomedina93.github.io"
+
+# Build settings
+theme: minima
+plugins:
+  - jekyll-feed
+  - jekyll-sitemap
+  - jekyll-seo-tag
+
+# SEO
+author:
+  name: "Home Finds"
+  email: ""
+
+# Affiliate disclosure shown site-wide
+affiliate_disclosure: "This site contains affiliate links. I may earn a commission when you purchase through these links, at no extra cost to you."
+
+# Social links (fill in when accounts are created)
+social:
+  pinterest: ""
+  instagram: ""
+  facebook:  ""
+
+# Exclude from processing
+exclude:
+  - Gemfile
+  - Gemfile.lock
+  - node_modules
+  - vendor
