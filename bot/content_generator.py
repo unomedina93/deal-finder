@@ -1,149 +1,134 @@
 """
 Content Generator — powered by Google Gemini (free tier)
-Uses the new google-genai SDK with gemini-2.0-flash-lite (free, fast)
-Generates all content for one product:
-  - SEO blog post (Markdown)
-  - 5 Pinterest pin descriptions
-  - Instagram/Facebook caption
-  - Email newsletter section
+Makes a SINGLE API call per product to minimize quota usage.
+Returns: blog post, 5 pin descriptions, social caption, email section.
 """
 
 import os
+import json
+import time
 from google import genai
 
 
 client = genai.Client(api_key=os.getenv("GEMINI_API_KEY"))
-MODEL  = "gemini-2.0-flash-lite"  # Free tier, fast, great quality
+MODEL  = "gemini-2.0-flash-lite"
 
 
-def _ask(prompt: str) -> str:
-    """Send a prompt to Gemini and return the text response."""
-    response = client.models.generate_content(model=MODEL, contents=prompt)
-    return response.text
+def _ask(prompt: str, retries: int = 3) -> str:
+    """Send a prompt to Gemini with retry on rate limit."""
+    for attempt in range(retries):
+        try:
+            response = client.models.generate_content(model=MODEL, contents=prompt)
+            return response.text
+        except Exception as e:
+            if "429" in str(e) and attempt < retries - 1:
+                wait = 30 * (attempt + 1)  # 30s, 60s, 90s
+                print(f"Rate limited — waiting {wait}s before retry {attempt + 2}/{retries}")
+                time.sleep(wait)
+            else:
+                raise
+    return ""
 
 
 def generate_all_content(product: dict) -> dict:
     """
-    Generate all content for a product.
+    Generate ALL content in a single API call to minimize quota usage.
     Returns a dict with keys: blog_post, pin_descriptions, social_caption, email_section
     """
     print(f"Generating content for: {product['name']}")
 
-    return {
-        "blog_post":        generate_blog_post(product),
-        "pin_descriptions": generate_pin_descriptions(product),
-        "social_caption":   generate_social_caption(product),
-        "email_section":    generate_email_section(product),
-    }
+    keywords    = ", ".join(product.get("keywords", []))
+    keywords_3  = ", ".join(product.get("keywords", [])[:3])
+    name        = product['name']
+    brand       = product.get('brand', '')
+    price       = product.get('price', '')
+    description = product['description']
+    niche       = product.get('niche', 'home')
+    url         = product.get('affiliate_url', product['product_url'])
 
+    prompt = f"""You are a helpful affiliate marketing content writer. Generate all of the following content for this product in a single response.
 
-def generate_blog_post(product: dict) -> str:
-    """Generate a 900-1100 word SEO-optimized blog post in Markdown."""
-    keywords = ", ".join(product.get("keywords", []))
-    prompt = f"""Write a helpful, SEO-optimized blog post about this product.
+PRODUCT INFO:
+- Name: {name}
+- Brand: {brand}
+- Price: ${price}
+- Description: {description}
+- Keywords: {keywords}
+- Niche: {niche}
+- Affiliate URL: {url}
 
-Product: {product['name']}
-Brand: {product.get('brand', '')}
-Price: ${product.get('price', '')}
-Description: {product['description']}
-Target keywords: {keywords}
-Niche: {product.get('niche', 'home')}
-Affiliate URL: {product.get('affiliate_url', product['product_url'])}
+Generate the following 4 sections. Use the EXACT section headers shown below so the content can be parsed.
 
-Requirements:
-- Length: 900-1100 words
-- Format: Markdown with H2 and H3 subheadings
-- Tone: Helpful, honest, conversational — like a knowledgeable friend
-- Structure: Intro → Key features → Who it's for → Pros & cons → Final verdict
-- Include the primary keyword naturally in the title, first paragraph, and 2-3 subheadings
-- Add a clear call-to-action with the affiliate URL near the end
-- Include this FTC disclosure at the very top (before the title):
-  > *This post contains affiliate links. I may earn a commission at no extra cost to you.*
-- Do NOT start the title with "Verify"
-- Do NOT use phrases like "game changer" or "life changing"
-- End with a brief FAQ section (3 questions)
+---BLOG_POST---
+Write a 900-1100 word SEO-optimized blog post in Markdown.
+- Include H2 and H3 subheadings
+- Tone: helpful, honest, conversational
+- Structure: Intro → Key features → Who it's for → Pros & cons → Final verdict → FAQ (3 questions)
+- Primary keyword in title, first paragraph, and 2-3 subheadings
+- Call-to-action with the affiliate URL near the end
+- FTC disclosure at the very top: > *This post contains affiliate links. I may earn a commission at no extra cost to you.*
+- Do NOT use "game changer" or "life changing"
 
-Write only the blog post content. No meta commentary."""
+---PIN_DESCRIPTIONS---
+Write 5 Pinterest pin descriptions as a numbered list (1. 2. 3. 4. 5.)
+Each description:
+- 150-200 characters
+- Includes 1-2 keywords naturally
+- Includes the price
+- Ends with: #ad #affiliate
+- Different angles: 1) Feature-focused 2) Problem/solution 3) Value/price 4) Lifestyle 5) Gift idea
 
-    return _ask(prompt)
-
-
-def generate_pin_descriptions(product: dict) -> list[str]:
-    """Generate 5 Pinterest pin descriptions (SEO-optimized, disclosure included)."""
-    keywords = ", ".join(product.get("keywords", [])[:3])
-    prompt = f"""Write 5 Pinterest pin descriptions for this product.
-
-Product: {product['name']}
-Price: ${product.get('price', '')}
-Description: {product['description']}
-Affiliate URL: {product.get('affiliate_url', product['product_url'])}
-Keywords to include: {keywords}
-
-Requirements for EACH description:
-- Length: 150-200 characters (Pinterest sweet spot)
-- Include 1-2 of the target keywords naturally
-- Include the price to boost click-through rate
-- Include a call to action (Shop now, See price, Get it here, etc.)
-- End with: #ad #affiliate
-- Each description should have a different angle:
-  1. Feature-focused
-  2. Problem/solution focused
-  3. Value/price focused
-  4. Lifestyle/aspirational
-  5. Gift idea angle
-
-Format your response as a numbered list (1. 2. 3. 4. 5.) with just the description text."""
-
-    raw = _ask(prompt)
-    lines = [line.strip() for line in raw.split("\n") if line.strip()]
-    descriptions = []
-    for line in lines:
-        if line and line[0].isdigit() and ". " in line:
-            descriptions.append(line.split(". ", 1)[1])
-        elif line and not line[0].isdigit():
-            descriptions.append(line)
-    return descriptions[:5]
-
-
-def generate_social_caption(product: dict) -> str:
-    """Generate an Instagram/Facebook caption with disclosure."""
-    prompt = f"""Write a short, engaging Instagram and Facebook caption for this product.
-
-Product: {product['name']}
-Price: ${product.get('price', '')}
-Description: {product['description']}
-Affiliate URL: {product.get('affiliate_url', product['product_url'])}
-
-Requirements:
-- Length: 2-3 sentences max
-- Hook in the first line (no "I" as the first word)
-- Conversational, not salesy
+---SOCIAL_CAPTION---
+Write one Instagram/Facebook caption.
+- 2-3 sentences max
+- Hook first line (no "I" as first word)
 - Include the price
 - End with: Link in bio! #ad #affiliate
-- Add 5-8 relevant hashtags on a new line at the end
+- 5-8 hashtags on a new line
 
-Write only the caption. No meta commentary."""
-
-    return _ask(prompt)
-
-
-def generate_email_section(product: dict) -> str:
-    """Generate a short email newsletter section (HTML-friendly Markdown)."""
-    prompt = f"""Write a short product spotlight section for a weekly email newsletter.
-
-Product: {product['name']}
-Price: ${product.get('price', '')}
-Description: {product['description']}
-Affiliate URL: {product.get('affiliate_url', product['product_url'])}
-
-Requirements:
-- Length: 80-120 words
-- Friendly, personal tone — like a tip from a friend
-- One clear benefit stated upfront
+---EMAIL_SECTION---
+Write an 80-120 word product spotlight for a weekly email newsletter.
+- Friendly, personal tone
+- One clear benefit upfront
 - Include the price
-- One CTA link using this format: [Shop {product['name']} → affiliate URL]
-- Include this disclosure on the last line: *Affiliate link — I earn a small commission at no extra cost to you.*
+- CTA: [Shop {name} → {url}]
+- Last line: *Affiliate link — I earn a small commission at no extra cost to you.*"""
 
-Write only the section content. No subject line. No meta commentary."""
+    raw = _ask(prompt)
+    return _parse_response(raw)
 
-    return _ask(prompt)
+
+def _parse_response(raw: str) -> dict:
+    """Parse the single combined Gemini response into 4 content pieces."""
+
+    def extract_section(text: str, header: str, next_header: str = None) -> str:
+        start = text.find(f"---{header}---")
+        if start == -1:
+            return ""
+        start += len(f"---{header}---")
+        if next_header:
+            end = text.find(f"---{next_header}---", start)
+            return text[start:end].strip() if end != -1 else text[start:].strip()
+        return text[start:].strip()
+
+    blog_post    = extract_section(raw, "BLOG_POST",      "PIN_DESCRIPTIONS")
+    pins_raw     = extract_section(raw, "PIN_DESCRIPTIONS", "SOCIAL_CAPTION")
+    social       = extract_section(raw, "SOCIAL_CAPTION",  "EMAIL_SECTION")
+    email        = extract_section(raw, "EMAIL_SECTION")
+
+    # Parse pin descriptions into a list
+    pin_lines    = [l.strip() for l in pins_raw.split("\n") if l.strip()]
+    descriptions = []
+    for line in pin_lines:
+        if line and line[0].isdigit() and ". " in line:
+            descriptions.append(line.split(". ", 1)[1])
+    if not descriptions:
+        descriptions = [l for l in pin_lines if l]
+    descriptions = descriptions[:5]
+
+    return {
+        "blog_post":        blog_post,
+        "pin_descriptions": descriptions,
+        "social_caption":   social,
+        "email_section":    email,
+    }
