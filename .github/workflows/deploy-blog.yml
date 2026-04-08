@@ -5,12 +5,6 @@ on:
     branches: [main]
     paths:
       - "blog/**"
-
-  # Also runs after the daily content workflow commits new posts
-  workflow_run:
-    workflows: ["Daily Affiliate Content"]
-    types: [completed]
-
   workflow_dispatch:
 
 permissions:
@@ -33,14 +27,21 @@ jobs:
         uses: ruby/setup-ruby@v1
         with:
           ruby-version: "3.1"
-          bundler-cache: true
           working-directory: blog
+
+      - name: Install Jekyll
+        run: |
+          cd blog
+          gem install bundler
+          bundle install
 
       - name: Setup Pages
         uses: actions/configure-pages@v4
 
       - name: Build with Jekyll
-        run: bundle exec jekyll build --source blog --destination blog/_site --baseurl ""
+        run: |
+          cd blog
+          bundle exec jekyll build --destination _site --baseurl "/deal-finder"
         env:
           JEKYLL_ENV: production
 

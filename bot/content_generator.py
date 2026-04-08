@@ -1,5 +1,6 @@
 """
 Content Generator — powered by Google Gemini (free tier)
+Uses the new google-genai SDK with gemini-2.0-flash-lite (free, fast)
 Generates all content for one product:
   - SEO blog post (Markdown)
   - 5 Pinterest pin descriptions
@@ -8,16 +9,16 @@ Generates all content for one product:
 """
 
 import os
-import google.generativeai as genai
+from google import genai
 
 
-genai.configure(api_key=os.getenv("GEMINI_API_KEY"))
-model = genai.GenerativeModel("gemini-1.5-flash")  # Free tier: 1,500 requests/day
+client = genai.Client(api_key=os.getenv("GEMINI_API_KEY"))
+MODEL  = "gemini-2.0-flash-lite"  # Free tier, fast, great quality
 
 
 def _ask(prompt: str) -> str:
     """Send a prompt to Gemini and return the text response."""
-    response = model.generate_content(prompt)
+    response = client.models.generate_content(model=MODEL, contents=prompt)
     return response.text
 
 
