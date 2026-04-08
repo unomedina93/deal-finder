@@ -1,5 +1,5 @@
 """
-Content Generator — powered by Claude API (Haiku model)
+Content Generator — powered by Google Gemini (free tier)
 Generates all content for one product:
   - SEO blog post (Markdown)
   - 5 Pinterest pin descriptions
@@ -8,30 +8,31 @@ Generates all content for one product:
 """
 
 import os
-import anthropic
+import google.generativeai as genai
 
 
-client = anthropic.Anthropic(api_key=os.getenv("ANTHROPIC_API_KEY"))
-MODEL = "claude-haiku-4-5-20251001"  # Cheapest model — ~$0.05/month for daily posts
+genai.configure(api_key=os.getenv("GEMINI_API_KEY"))
+model = genai.GenerativeModel("gemini-1.5-flash")  # Free tier: 1,500 requests/day
+
+
+def _ask(prompt: str) -> str:
+    """Send a prompt to Gemini and return the text response."""
+    response = model.generate_content(prompt)
+    return response.text
 
 
 def generate_all_content(product: dict) -> dict:
     """
-    Generate all content for a product in one call.
+    Generate all content for a product.
     Returns a dict with keys: blog_post, pin_descriptions, social_caption, email_section
     """
     print(f"Generating content for: {product['name']}")
 
-    blog_post      = generate_blog_post(product)
-    pin_descriptions = generate_pin_descriptions(product)
-    social_caption = generate_social_caption(product)
-    email_section  = generate_email_section(product)
-
     return {
-        "blog_post": blog_post,
-        "pin_descriptions": pin_descriptions,
-        "social_caption": social_caption,
-        "email_section": email_section,
+        "blog_post":        generate_blog_post(product),
+        "pin_descriptions": generate_pin_descriptions(product),
+        "social_caption":   generate_social_caption(product),
+        "email_section":    generate_email_section(product),
     }
 
 
@@ -63,12 +64,7 @@ Requirements:
 
 Write only the blog post content. No meta commentary."""
 
-    response = client.messages.create(
-        model=MODEL,
-        max_tokens=2048,
-        messages=[{"role": "user", "content": prompt}]
-    )
-    return response.content[0].text
+    return _ask(prompt)
 
 
 def generate_pin_descriptions(product: dict) -> list[str]:
@@ -97,18 +93,10 @@ Requirements for EACH description:
 
 Format your response as a numbered list (1. 2. 3. 4. 5.) with just the description text."""
 
-    response = client.messages.create(
-        model=MODEL,
-        max_tokens=800,
-        messages=[{"role": "user", "content": prompt}]
-    )
-
-    # Parse the numbered list into a Python list
-    raw = response.content[0].text
+    raw = _ask(prompt)
     lines = [line.strip() for line in raw.split("\n") if line.strip()]
     descriptions = []
     for line in lines:
-        # Strip leading "1. " "2. " etc.
         if line and line[0].isdigit() and ". " in line:
             descriptions.append(line.split(". ", 1)[1])
         elif line and not line[0].isdigit():
@@ -135,12 +123,7 @@ Requirements:
 
 Write only the caption. No meta commentary."""
 
-    response = client.messages.create(
-        model=MODEL,
-        max_tokens=300,
-        messages=[{"role": "user", "content": prompt}]
-    )
-    return response.content[0].text
+    return _ask(prompt)
 
 
 def generate_email_section(product: dict) -> str:
@@ -162,9 +145,4 @@ Requirements:
 
 Write only the section content. No subject line. No meta commentary."""
 
-    response = client.messages.create(
-        model=MODEL,
-        max_tokens=400,
-        messages=[{"role": "user", "content": prompt}]
-    )
-    return response.content[0].text
+    return _ask(prompt)
