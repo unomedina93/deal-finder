@@ -27,20 +27,6 @@ jobs:
       - name: Install dependencies
         run: pip install -r requirements.txt
 
-      - name: List available Gemini models (debug)
-        env:
-          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
-        run: |
-          python3 - <<'EOF'
-          import os
-          from google import genai
-          client = genai.Client(api_key=os.environ["GEMINI_API_KEY"])
-          print("=== Available models ===")
-          for m in client.models.list():
-              if "generateContent" in (m.supported_actions or []):
-                  print(m.name)
-          EOF
-
       - name: Run affiliate bot
         env:
           GEMINI_API_KEY:           ${{ secrets.GEMINI_API_KEY }}

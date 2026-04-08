@@ -10,11 +10,8 @@ import time
 from google import genai
 
 
-client = genai.Client(
-    api_key=os.getenv("GEMINI_API_KEY"),
-    http_options={"api_version": "v1"}
-)
-MODEL = "gemini-1.5-flash"
+client = genai.Client(api_key=os.getenv("GEMINI_API_KEY"))
+MODEL  = "gemini-2.0-flash"
 
 
 def _ask(prompt: str, retries: int = 3) -> str:
