@@ -1,28 +1,33 @@
 """
-Content Generator — powered by Google Gemini (free tier)
+Content Generator — powered by Groq (free tier)
+Uses llama-3.3-70b-versatile: fast, high quality, 14,400 requests/day free.
 Makes a SINGLE API call per product to minimize quota usage.
 Returns: blog post, 5 pin descriptions, social caption, email section.
 """
 
 import os
-import json
 import time
-from google import genai
+from groq import Groq
 
 
-client = genai.Client(api_key=os.getenv("GEMINI_API_KEY"))
-MODEL  = "gemini-2.0-flash"
+client = Groq(api_key=os.getenv("GROQ_API_KEY"))
+MODEL  = "llama-3.3-70b-versatile"
 
 
 def _ask(prompt: str, retries: int = 3) -> str:
-    """Send a prompt to Gemini with retry on rate limit."""
+    """Send a prompt to Groq with retry on rate limit."""
     for attempt in range(retries):
         try:
-            response = client.models.generate_content(model=MODEL, contents=prompt)
-            return response.text
+            completion = client.chat.completions.create(
+                model=MODEL,
+                messages=[{"role": "user", "content": prompt}],
+                max_tokens=4096,
+                temperature=0.7,
+            )
+            return completion.choices[0].message.content
         except Exception as e:
             if "429" in str(e) and attempt < retries - 1:
-                wait = 30 * (attempt + 1)  # 30s, 60s, 90s
+                wait = 30 * (attempt + 1)
                 print(f"Rate limited — waiting {wait}s before retry {attempt + 2}/{retries}")
                 time.sleep(wait)
             else:
@@ -37,14 +42,13 @@ def generate_all_content(product: dict) -> dict:
     """
     print(f"Generating content for: {product['name']}")
 
-    keywords    = ", ".join(product.get("keywords", []))
-    keywords_3  = ", ".join(product.get("keywords", [])[:3])
-    name        = product['name']
-    brand       = product.get('brand', '')
-    price       = product.get('price', '')
-    description = product['description']
-    niche       = product.get('niche', 'home')
-    url         = product.get('affiliate_url', product['product_url'])
+    keywords   = ", ".join(product.get("keywords", []))
+    name       = product['name']
+    brand      = product.get('brand', '')
+    price      = product.get('price', '')
+    desc       = product['description']
+    niche      = product.get('niche', 'home')
+    url        = product.get('affiliate_url', product['product_url'])
 
     prompt = f"""You are a helpful affiliate marketing content writer. Generate all of the following content for this product in a single response.
 
@@ -52,12 +56,12 @@ PRODUCT INFO:
 - Name: {name}
 - Brand: {brand}
 - Price: ${price}
-- Description: {description}
+- Description: {desc}
 - Keywords: {keywords}
 - Niche: {niche}
 - Affiliate URL: {url}
 
-Generate the following 4 sections. Use the EXACT section headers shown below so the content can be parsed.
+Generate the following 4 sections. Use the EXACT section headers shown below.
 
 ---BLOG_POST---
 Write a 900-1100 word SEO-optimized blog post in Markdown.
@@ -99,7 +103,7 @@ Write an 80-120 word product spotlight for a weekly email newsletter.
 
 
 def _parse_response(raw: str) -> dict:
-    """Parse the single combined Gemini response into 4 content pieces."""
+    """Parse the single combined response into 4 content pieces."""
 
     def extract_section(text: str, header: str, next_header: str = None) -> str:
         start = text.find(f"---{header}---")
@@ -111,12 +115,11 @@ def _parse_response(raw: str) -> dict:
             return text[start:end].strip() if end != -1 else text[start:].strip()
         return text[start:].strip()
 
-    blog_post    = extract_section(raw, "BLOG_POST",      "PIN_DESCRIPTIONS")
-    pins_raw     = extract_section(raw, "PIN_DESCRIPTIONS", "SOCIAL_CAPTION")
-    social       = extract_section(raw, "SOCIAL_CAPTION",  "EMAIL_SECTION")
-    email        = extract_section(raw, "EMAIL_SECTION")
+    blog_post = extract_section(raw, "BLOG_POST",       "PIN_DESCRIPTIONS")
+    pins_raw  = extract_section(raw, "PIN_DESCRIPTIONS", "SOCIAL_CAPTION")
+    social    = extract_section(raw, "SOCIAL_CAPTION",   "EMAIL_SECTION")
+    email     = extract_section(raw, "EMAIL_SECTION")
 
-    # Parse pin descriptions into a list
     pin_lines    = [l.strip() for l in pins_raw.split("\n") if l.strip()]
     descriptions = []
     for line in pin_lines:
@@ -124,11 +127,10 @@ def _parse_response(raw: str) -> dict:
             descriptions.append(line.split(". ", 1)[1])
     if not descriptions:
         descriptions = [l for l in pin_lines if l]
-    descriptions = descriptions[:5]
 
     return {
         "blog_post":        blog_post,
-        "pin_descriptions": descriptions,
+        "pin_descriptions": descriptions[:5],
         "social_caption":   social,
         "email_section":    email,
     }
