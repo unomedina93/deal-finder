@@ -109,15 +109,15 @@ def _parse_response(raw: str) -> dict:
     import re
 
     def extract_section(text: str, header: str, next_header: str = None) -> str:
-        # Match header with or without surrounding dashes/spaces
-        pattern = rf"---\s*{re.escape(header)}\s*---"
-        match = re.search(pattern, text)
+        # Match header in multiple formats: ---HEADER---, ### HEADER, ## HEADER, **HEADER**
+        pattern = rf"(?:---\s*{re.escape(header)}\s*---|#+\s*{re.escape(header)}\s*|\*{{1,2}}{re.escape(header)}\*{{1,2}})"
+        match = re.search(pattern, text, re.IGNORECASE)
         if not match:
             return ""
         start = match.end()
         if next_header:
-            next_pattern = rf"---\s*{re.escape(next_header)}\s*---"
-            next_match = re.search(next_pattern, text[start:])
+            next_pattern = rf"(?:---\s*{re.escape(next_header)}\s*---|#+\s*{re.escape(next_header)}\s*|\*{{1,2}}{re.escape(next_header)}\*{{1,2}})"
+            next_match = re.search(next_pattern, text[start:], re.IGNORECASE)
             if next_match:
                 return text[start: start + next_match.start()].strip()
         return text[start:].strip()

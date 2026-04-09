@@ -46,6 +46,5 @@ jobs:
         run: |
           git config --global user.name  "Affiliate Bot"
           git config --global user.email "bot@affiliate.local"
-          git add blog/_posts/ logs/
-          git diff --staged --quiet || git commit -m "Daily post: $(date +'%Y-%m-%d')"
-          git push
+          git add -A blog/_posts/ logs/ 2>/dev/null || true
+          git diff --staged --quiet && echo "Nothing to commit" || (git commit -m "Daily post: $(date +'%Y-%m-%d')" && git push)
