@@ -118,7 +118,7 @@ def _print_posts(product, pin_descriptions, social_caption, blog_post_url):
     print("\n" + "="*60)
     print("PINTEREST POST (copy to Pinterest manually):")
     print("="*60)
-    print(pin_descriptions[0])
+    print(pin_descriptions[0] if pin_descriptions else "(no pin descriptions generated)")
     print(f"\nLink: {blog_post_url}")
     print(f"Image: {product.get('image_url', 'N/A')}")
 

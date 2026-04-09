@@ -103,30 +103,44 @@ Write an 80-120 word product spotlight for a weekly email newsletter.
 
 
 def _parse_response(raw: str) -> dict:
-    """Parse the single combined response into 4 content pieces."""
+    """Parse the single combined response into 4 content pieces.
+    Handles variations in how the model formats section headers.
+    """
+    import re
 
     def extract_section(text: str, header: str, next_header: str = None) -> str:
-        start = text.find(f"---{header}---")
-        if start == -1:
+        # Match header with or without surrounding dashes/spaces
+        pattern = rf"---\s*{re.escape(header)}\s*---"
+        match = re.search(pattern, text)
+        if not match:
             return ""
-        start += len(f"---{header}---")
+        start = match.end()
         if next_header:
-            end = text.find(f"---{next_header}---", start)
-            return text[start:end].strip() if end != -1 else text[start:].strip()
+            next_pattern = rf"---\s*{re.escape(next_header)}\s*---"
+            next_match = re.search(next_pattern, text[start:])
+            if next_match:
+                return text[start: start + next_match.start()].strip()
         return text[start:].strip()
 
-    blog_post = extract_section(raw, "BLOG_POST",       "PIN_DESCRIPTIONS")
-    pins_raw  = extract_section(raw, "PIN_DESCRIPTIONS", "SOCIAL_CAPTION")
-    social    = extract_section(raw, "SOCIAL_CAPTION",   "EMAIL_SECTION")
+    blog_post = extract_section(raw, "BLOG_POST",        "PIN_DESCRIPTIONS")
+    pins_raw  = extract_section(raw, "PIN_DESCRIPTIONS",  "SOCIAL_CAPTION")
+    social    = extract_section(raw, "SOCIAL_CAPTION",    "EMAIL_SECTION")
     email     = extract_section(raw, "EMAIL_SECTION")
 
+    # Parse pin list — handle "1.", "1)" or just plain lines
     pin_lines    = [l.strip() for l in pins_raw.split("\n") if l.strip()]
     descriptions = []
     for line in pin_lines:
-        if line and line[0].isdigit() and ". " in line:
-            descriptions.append(line.split(". ", 1)[1])
-    if not descriptions:
-        descriptions = [l for l in pin_lines if l]
+        match = re.match(r"^[\d]+[.)]\s*(.+)", line)
+        if match:
+            descriptions.append(match.group(1))
+        elif line and not re.match(r"^[\d]+[.)]", line):
+            descriptions.append(line)
+
+    # Fallback: if parsing completely failed, print raw for debugging
+    if not blog_post:
+        print("WARNING: Could not parse blog post section. Raw response snippet:")
+        print(raw[:500])
 
     return {
         "blog_post":        blog_post,
